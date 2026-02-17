@@ -7,6 +7,7 @@ Wordle Run.bat
 
 # Ignore Gradle build output directory
 build
+bin
 
 # vscode
 .vscode/
