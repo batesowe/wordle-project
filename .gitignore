@@ -2,7 +2,7 @@
 .gradle
 gradlew
 gradle.properties
-"Wordle Run.bat"
+Wordle Run.bat
 
 
 # Ignore Gradle build output directory
