@@ -2,8 +2,6 @@
 .gradle
 gradlew
 gradle.properties
-Wordle Run.bat
-
 
 # Ignore Gradle build output directory
 build
