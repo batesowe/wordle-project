@@ -6,14 +6,20 @@ import java.awt.event.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.HashSet;
 
 public class WordlePanel extends JPanel {
     private WordleGame game;
     private List<String> wordList;
     private GridPanel gridPanel;
+    private JPanel keyboardPanel;
     private JButton newGameButton;
     private int currentAttempt = 0, currentPos = 0;
     private Map<Character, JLabel> keyMap = new HashMap<>();
+    private Set<String> validWords;
+    private static JLabel tempMsgLabel = null;
+    private javax.swing.Timer tempMsgTimer = null;
 
     static class GridPanel extends JPanel {
         private JLabel[] cells = new JLabel[30];
@@ -41,8 +47,16 @@ public class WordlePanel extends JPanel {
             int size = Math.min(w, h);
             int xOffset = (getWidth() - size * cols) / 2;
             int yOffset = (getHeight() - size * rows) / 2;
-
             int fontSize = size / 2;
+
+            if (tempMsgLabel != null && tempMsgLabel.isVisible())
+            {
+                int labelWidth = Math.min(getWidth() / 2, size * cols / 2);
+                int labelHeight = getHeight() / 10;
+                int x = (getWidth() - labelWidth) / 2;
+                int y = (getHeight() - labelHeight) / 2;
+                tempMsgLabel.setBounds(x, y, labelWidth, labelHeight);
+            }
 
             for (int r = 0; r < rows; r++) {
                 for (int c = 0; c < cols; c++) {
@@ -66,6 +80,7 @@ public class WordlePanel extends JPanel {
     public WordlePanel() {
         setLayout(new BorderLayout());
         wordList = WordUtils.loadWords("src/main/resources/words.txt");
+        validWords = new HashSet<>(wordList);
 
         gridPanel = new GridPanel();
         add(gridPanel, BorderLayout.CENTER);
@@ -83,6 +98,7 @@ public class WordlePanel extends JPanel {
                 if (!game.hasAttemptsLeft())
                     return;
                 char c = e.getKeyChar();
+                
                 if (Character.isLetter(c) && currentPos < 5) {
                     c = Character.toUpperCase(c);
                     gridPanel.getCell(currentAttempt, currentPos).setText("" + c);
@@ -90,10 +106,20 @@ public class WordlePanel extends JPanel {
                 } else if (e.getKeyCode() == KeyEvent.VK_BACK_SPACE && currentPos > 0) {
                     currentPos--;
                     gridPanel.getCell(currentAttempt, currentPos).setText("");
+
+                    if (tempMsgLabel != null && tempMsgLabel.isVisible()) {
+                        tempMsgLabel.repaint();
+                    }
+                    
                 } else if (e.getKeyCode() == KeyEvent.VK_ENTER && currentPos == 5) {
-                    String guess = getCurrentGuess();
+                    String guess = getCurrentGuess().trim().toUpperCase();
+                    if(!validWords.contains(guess)) {
+                        showTemporaryMessage("Invalid word!");
+                        return;
+                    }
                     String result = game.checkGuess(guess);
                     applyResult(result);
+
                     currentAttempt++;
                     currentPos = 0;
                     if (game.hasWon(guess))
@@ -110,7 +136,7 @@ public class WordlePanel extends JPanel {
         String[][] rows = { { "Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P" },
                 { "A", "S", "D", "F", "G", "H", "J", "K", "L" },
                 { "Z", "X", "C", "V", "B", "N", "M" } };
-        JPanel keyboardPanel = new JPanel();
+        keyboardPanel = new JPanel();
         keyboardPanel.setLayout(new BoxLayout(keyboardPanel, BoxLayout.Y_AXIS));
         for (String[] row : rows) {
             JPanel rowPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 5));
@@ -143,6 +169,9 @@ public class WordlePanel extends JPanel {
             }
         for (JLabel key : keyMap.values())
             key.setBackground(Color.WHITE);
+
+        gridPanel.repaint();
+        keyboardPanel.repaint();
         requestFocusInWindow();
     }
 
@@ -174,6 +203,8 @@ public class WordlePanel extends JPanel {
                         key.setBackground(Color.LIGHT_GRAY);
                 }
             }
+            gridPanel.repaint();
+            keyboardPanel.repaint();
         }
     }
 
@@ -192,5 +223,37 @@ public class WordlePanel extends JPanel {
             startNewGame();
         else
             System.exit(0);
+    }
+
+    private void showTemporaryMessage(String message)
+    {
+        // Create label once if needed
+        if (tempMsgLabel == null) {
+            tempMsgLabel = new JLabel();
+            tempMsgLabel.setOpaque(true);
+            tempMsgLabel.setBackground(new Color(255, 255, 200)); // light yellow
+            tempMsgLabel.setBorder(BorderFactory.createLineBorder(Color.BLACK));
+            tempMsgLabel.setHorizontalAlignment(SwingConstants.CENTER);
+            tempMsgLabel.setFont(tempMsgLabel.getFont().deriveFont(16f));
+
+            gridPanel.add(tempMsgLabel);
+            gridPanel.setComponentZOrder(tempMsgLabel, 0); 
+        }
+
+        tempMsgLabel.setText(message);
+        tempMsgLabel.setForeground(new Color(0, 0, 0, 255));
+        tempMsgLabel.setVisible(true);
+        gridPanel.repaint();
+
+        if (tempMsgTimer != null && tempMsgTimer.isRunning()) {
+            tempMsgTimer.stop();
+        }
+
+        tempMsgTimer = new javax.swing.Timer(800, e -> {
+            tempMsgLabel.setVisible(false);
+            ((javax.swing.Timer) e.getSource()).stop();
+        });
+        tempMsgTimer.setRepeats(false); 
+        tempMsgTimer.start();
     }
 }
